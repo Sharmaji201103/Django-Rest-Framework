@@ -5,7 +5,7 @@ from .serializers import StudentSerializer,EmployeeSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
-# Create your views here.
+
 
 from django.http import Http404
 
@@ -16,6 +16,9 @@ from rest_framework import mixins,generics,viewsets
 
 from blogs.models import Blog,Comment
 from blogs.serializers import BlogSerializer,CommentSerializer
+from .paginations import CustomPaginaton
+from .filters import EmployeeFilter
+
 
 
 @api_view(['GET','POST'])
@@ -137,9 +140,15 @@ class EmployeeDetail(generics.RetrieveUpdateDestroyAPIView):
 """
 
 
-""" 
+
 #ViewSets
-class EmployeeViewSet(viewsets.ViewSet):
+class EmployeeViewSet(viewsets.ModelViewSet):
+    queryset=Employee.objects.all()
+    serializer_class=EmployeeSerializer
+    pagination_class=CustomPaginaton
+    filterset_class=EmployeeFilter
+    
+""" 
     def list(self,request):
         queryset=Employee.objects.all()
         serializer=EmployeeSerializer(queryset,many=True)
@@ -171,9 +180,8 @@ class EmployeeViewSet(viewsets.ViewSet):
         return request(status=status.HTTP_204_NO_CONTENT)
 """
 
-class EmployeeViewSet(viewsets.ModelViewSet):
-    queryset=Employee.objects.all()
-    serializer_class=EmployeeSerializer
+
+    
 
 #Blogs
 class BlogsView(generics.ListCreateAPIView):

@@ -8,7 +8,6 @@ router.register('employees',views.EmployeeViewSet, basename='employee')
 
 
 
-
 urlpatterns = [
     path('students/',views.studentsView),
     path('student/<int:id>/',views.studentDetailView),
