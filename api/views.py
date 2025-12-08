@@ -1,7 +1,7 @@
 from django.shortcuts import render,get_object_or_404
 # from django.http import JsonResponse
 from students.models import Student
-from .serializers import StudentSerializer,EmployeeSerializer
+from .serializers import StudentSerializer,EmployeeSerializer,ImportSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -20,6 +20,9 @@ from .paginations import CustomPaginaton
 from .filters import EmployeeFilter
 
 
+from rest_framework.parsers import MultiPartParser,FormParser
+from exceldata.models import DataImport
+import pandas as pd
 
 @api_view(['GET','POST'])
 def studentsView(request):
@@ -180,9 +183,6 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         return request(status=status.HTTP_204_NO_CONTENT)
 """
 
-
-    
-
 #Blogs
 class BlogsView(generics.ListCreateAPIView):
     queryset=Blog.objects.all()
@@ -201,3 +201,64 @@ class CommentDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset=Comment=Comment.objects.all()
     serializer_class=CommentSerializer
     lookup_field='pk'
+    
+    
+    
+class ImportAPIView(APIView):
+    serializer_class=ImportSerializer
+    parser_classes=[MultiPartParser,FormParser]
+    
+    def post(self,request):
+        try:
+            data=request.FILES
+            serializer=self.serializer_class(data=data)
+            if not serializer.is_valid():
+                return Response({
+                    'status':False,
+                    'message':'Provide a valid file'
+                },status=status.HTTP_400_BAD_REQUEST)
+            excel_file=data.get('file')
+            df=pd.read_excel(excel_file,sheet_name=0)
+            dataimports=[]
+            for index,row in df.iterrows():
+                first_name=row['FirstName']
+                last_name=row['LastName']
+                email=row['Email']
+                dataimport=DataImport.objects.filter(email=email)
+                if dataimport.exists():
+                    continue
+                else:
+                    dataimport=DataImport(
+                        first_name=first_name,
+                        last_name=last_name,
+                        email=email
+                    )
+                    dataimports.append(dataimport)
+            DataImport.objects.bulk_create(dataimports)
+            return Response({
+                'status':True,
+                'message':"Profile imported successfully"
+            },status=status.HTTP_201_CREATED)
+        
+        except Exception as e:
+            return Response({
+                'status':False,
+                'message':'We could not complete the import process.'
+            },status=status.HTTP_400_BAD_REQUEST)
+            
+class ExportAPIView(APIView):
+    def post(self,request):
+        try:
+            dataexport=DataImport.objects.all()
+            df=pd.DataFrame.from_records(dataexport.values(),exclude=['date_created'])
+            df.to_excel('ProfileExport.xlsx',index=False)
+            return Response({
+                'status':True,
+                'message':'Profile exported successfully'
+            },status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({
+                'status':False,
+                'message':'We could not complete the export process.'
+            },status=status.HTTP_400_BAD_REQUEST)

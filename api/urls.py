@@ -22,4 +22,7 @@ urlpatterns = [
     
     path('blogs/<int:pk>/',views.BlogDetailView.as_view()),
     path('comments/<int:pk>/',views.CommentDetailView.as_view()),
+    
+    path('import/',views.ImportAPIView.as_view()),
+    path('export/',views.ExportAPIView.as_view())
 ]

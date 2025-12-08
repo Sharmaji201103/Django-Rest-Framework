@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'employees',
     'blogs',
     "django_filters",
+    'exceldata',
 ]
 
 MIDDLEWARE = [
