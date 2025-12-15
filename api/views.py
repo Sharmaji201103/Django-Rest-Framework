@@ -1,18 +1,18 @@
 from django.shortcuts import render,get_object_or_404
 # from django.http import JsonResponse
 from students.models import Student
-from .serializers import StudentSerializer,EmployeeSerializer,ImportSerializer
+from .serializers import StudentSerializer,EmployeeSerializer,ImportSerializer,RegisterSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
-
+from django.contrib.auth.models import User
 
 from django.http import Http404
 
 from rest_framework.views import APIView
 from employees.models import Employee
 
-from rest_framework import mixins,generics,viewsets
+from rest_framework import mixins,generics,viewsets,permissions,authentication
 
 from blogs.models import Blog,Comment
 from blogs.serializers import BlogSerializer,CommentSerializer
@@ -23,6 +23,9 @@ from .filters import EmployeeFilter
 from rest_framework.parsers import MultiPartParser,FormParser
 from exceldata.models import DataImport
 import pandas as pd
+
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.tokens import RefreshToken
 
 @api_view(['GET','POST'])
 def studentsView(request):
@@ -146,10 +149,14 @@ class EmployeeDetail(generics.RetrieveUpdateDestroyAPIView):
 
 #ViewSets
 class EmployeeViewSet(viewsets.ModelViewSet):
+    permission_classes=[IsAuthenticated]
     queryset=Employee.objects.all()
     serializer_class=EmployeeSerializer
+    
+    
     pagination_class=CustomPaginaton
     filterset_class=EmployeeFilter
+    
     
 """ 
     def list(self,request):
@@ -262,3 +269,35 @@ class ExportAPIView(APIView):
                 'status':False,
                 'message':'We could not complete the export process.'
             },status=status.HTTP_400_BAD_REQUEST)
+            
+            
+class RegisterView(APIView):
+    def post(self,request):
+        serializer=RegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            user=serializer.save()
+            return Response({
+                "message":"user created successfully",
+                "status":True,
+            },status=status.HTTP_201_CREATED)
+        return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+    
+class LoginView(APIView):
+    def post(self,request):
+        data=request.data
+        username=data.get('username')
+        password=data.get('password')
+        user=User.objects.filter(username=username).first()
+        if user and user.check_password(password):
+            refresh=RefreshToken.for_user(user)
+            return Response({
+                "access_token":str(refresh.access_token),
+                "refresh_token":str(refresh)
+            })
+        return Response({"message":"Invalid Credentials"},status=status.HTTP_400_BAD_REQUEST)
+    
+class ProfileView(APIView):
+    permission_classes=[IsAuthenticated]
+    def get(self,request):
+        user=request.user
+        serializer=RegisterSerializer(user)
